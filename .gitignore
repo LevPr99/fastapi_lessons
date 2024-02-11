@@ -1,1 +1,3 @@
-./fastapi_lessons
+.gitignore
+fastapi_lessons/*
+__pycache__/*
