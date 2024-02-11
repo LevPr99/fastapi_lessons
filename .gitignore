@@ -1,4 +1,4 @@
-.gitignore
 fastapi_lessons/*
 __pycache__/*
+.gitignore
 .env
