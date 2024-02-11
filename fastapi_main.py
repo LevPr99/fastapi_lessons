@@ -60,7 +60,7 @@ def update_post(_id: int, field_to_update: str, content_to_update: str | int):
 
 # D - delete
 @app.delete('/posts/{_id}')
-def update_post(_id: int):
+def delete_post(_id: int):
     global my_posts
     if len(my_posts) >= _id and 0 <= _id - 1:
         del my_posts[_id - 1]
