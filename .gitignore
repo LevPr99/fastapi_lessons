@@ -1,6 +1,6 @@
-fastapi_lessons/*
-__pycache__/*
-.vscode/*
+.venv
+__pycache__/
+.vscode/
 .conda_fastapi_lesson/*
 
 .env
