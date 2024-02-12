@@ -1,5 +1,8 @@
 fastapi_lessons/*
 __pycache__/*
 .conda_fastapi_lesson/*
-.gitignore
+.vscode/*
+
+# .gitignore
 .env
+test_fastAPI.session.sql
