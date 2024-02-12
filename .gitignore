@@ -1,4 +1,6 @@
 fastapi_lessons/*
 __pycache__/*
+.vscode/*
+Postgres test.session.sql
 .gitignore
 .env
