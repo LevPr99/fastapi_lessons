@@ -1,6 +1,15 @@
 fastapi_lessons/*
 __pycache__/*
+<<<<<<< HEAD
 .vscode/*
 Postgres test.session.sql
 .gitignore
 .env
+=======
+.conda_fastapi_lesson/*
+.vscode/*
+
+# .gitignore
+.env
+test_fastAPI.session.sql
+>>>>>>> 6acf6d1a23f0aac180b0c54be26270c5aa624ccc
