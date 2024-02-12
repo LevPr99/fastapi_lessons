@@ -100,3 +100,4 @@ def delete_post(id: int):
                             detail="Item not found", 
                             headers={"X-Error": "There goes my error"},) 
     return {'item deleted': my_posts.pop(index)}
+# 
