@@ -1,0 +1,1 @@
+uvicorn.exe app.fastapi_main:app --reload

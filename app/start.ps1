@@ -1,1 +1,0 @@
-uvicorn.exe --app-dir fastapi_main:app --reload
