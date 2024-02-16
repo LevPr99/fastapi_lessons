@@ -6,3 +6,4 @@ __pycache__/
 .env
 test_fastAPI.session.sql
 Postgres test.session.sql
+dblogin_data.json
