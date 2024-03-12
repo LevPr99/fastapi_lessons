@@ -1,11 +1,22 @@
-from os.path import exists
-import json
-from typing import Dict
-import psycopg
-from psycopg.rows import dict_row
-from fastapi import HTTPException, status
 from datetime import datetime
+import json
+from typing import Any
+from pydantic import BaseModel
+from sqlalchemy import URL
+from os.path import exists
+from fastapi import Depends, HTTPException, status
+from . import models
 
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+
+
+# Post model
+class UserPost(BaseModel):
+    title: str
+    content: str
+    publish: bool = False
 
 
 def get_connect_data(file_json: str):
@@ -15,62 +26,69 @@ def get_connect_data(file_json: str):
            conn_str = json.loads(file.read())
     return conn_str
 
-def connect_db(evidence: Dict[str, str]):
-    try:
-        con = psycopg.connect(row_factory=dict_row,**evidence)
-        print('Connection to database sucessful!')
-    except psycopg.Error as error:
-        print('Connection to DB failed!')
-        print(error)
-        return None
-    return con
 
-def get_post(conn: psycopg.Connection, id: int | None=None):
-    data = {}
-    with conn.cursor() as cur:
-        if id is not None:
-            cur.execute(f"SELECT * FROM posts WHERE id = {id} ORDER BY id ASC;")
-            data = cur.fetchone()
-        else:
-            cur.execute(f"SELECT * FROM posts ORDER BY id ASC;")
-            data = cur.fetchall()
-        if data is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-                            detail="Item not found", 
-                            headers={"X-Error": "There goes my error"},) 
-    return data
-    
-def create_post(conn: psycopg.Connection, post):
-    with conn.cursor() as cur:
-        if post.publish is True:
-            cur.execute(
-                """INSERT INTO posts (title, content, publish, publish_at) 
-                VALUES (%s, %s, %s, %s) RETURNING * ;""", 
-                (post.title, post.content, post.publish, datetime.now()))
-        else:
-            cur.execute(
-                """INSERT INTO posts (title, content, publish) 
-                VALUES (%s, %s, %s) RETURNING * ;""", 
-                (post.title, post.content, post.publish))
-        data = cur.fetchone()
-    conn.commit()
-    return data
-    
-def update_post(conn: psycopg.Connection, id: int, data):
-    with conn.cursor() as cur:
-        cur.execute("UPDATE posts SET title = %s, content = %s, publish = %s, publish_at = %s WHERE id = %s RETURNING *;",
-                    (data.title, data.content, data.publish, 
-                     (datetime.now() if data.publish == True else None),
-                     id))
-        data = cur.fetchall()
-    if data is None:
+# Create DB connection link
+PG_DATABASE_URL = str(URL('postgresql+psycopg',
+                          **get_connect_data('resources/dblogin_data.json')))
+engine = create_engine(PG_DATABASE_URL)
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+Base = declarative_base()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+
+def error_raiser(content: Any | None, headers: str | None=None):
+    if content is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                         detail="Item not found", 
-                        headers={"X-Error": "There goes my error"},)
-    conn.commit()
-    return data
+                        headers={"X-Error": headers} if headers is not None else headers,)
 
-def delete_post(conn: psycopg.Connection, id: int):
-    with conn.cursor() as cur:
-        cur.execute(f"DELETE FROM posts WHERE id = {id};")
-    conn.commit()
+def get_post(db: Session, id: int | None = None, skip: int = 0, limit: int = 100):
+    if id is not None:
+        post = db.query(models.Post).filter(models.Post.id == id).first()
+    else:
+        post = db.query(models.Post).offset(skip).limit(limit).all()
+    error_raiser(post)
+    return post
+    
+def create_post_db(post: UserPost, db: Session = Depends(get_db)):
+    post = post.model_dump()
+    new_post = models.Post(**post)
+    if post['publish']:
+        new_post.publish_at = datetime.now()
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
+
+    
+# def update_post(conn: psycopg.Connection, id: int, data):
+#     with conn.cursor() as cur:
+#         cur.execute("UPDATE posts SET title = %s, content = %s, publish = %s, publish_at = %s WHERE id = %s RETURNING *;",
+#                     (data.title, data.content, data.publish, 
+#                      (datetime.now() if data.publish == True else None),
+#                      id))
+#         data = cur.fetchall()
+#     conn.commit()
+#     if data is None or len(data) < 1:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+#                         detail="Item not found", 
+#                         headers={"X-Error": "There goes my error"},)
+#     return data
+
+def delete_post_db(db: Session, id: int):
+    post = db.query(models.Post).filter(models.Post.id == id)
+    error_raiser(post.first())
+    post.delete()
+    db.commit()
+    # return post
